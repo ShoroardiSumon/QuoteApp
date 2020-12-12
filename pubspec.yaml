@@ -33,6 +33,8 @@ dependencies:
   path_provider: ^1.6.24
   intl: ^0.16.1
   flutter_datetime_picker: ^1.4.0
+  shared_preferences: ^0.5.12+4
+  progress_dialog: ^1.2.4
 
 dev_dependencies:
   flutter_test:

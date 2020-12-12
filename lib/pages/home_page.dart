@@ -4,9 +4,11 @@ import 'package:quoteApp/model_classes/quote_model.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:quoteApp/services/data_source.dart';
 import 'dart:math';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:quoteApp/pages/quote_tabs.dart';
+import 'package:quoteApp/utility/app_sharedpreference.dart';
+import 'package:progress_dialog/progress_dialog.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -14,6 +16,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  ProgressDialog _progressDialog;
+  List<String> sharedQuoteList =[];
+  AppSharedPreferences appSharedPreferences;
   QuoteDB quoteDB;
   DatabaseHelper helper;
   List<QuoteModel> _quoteModelList;
@@ -24,6 +29,7 @@ class _HomePageState extends State<HomePage> {
     final response = await http.get('https://type.fit/api/quotes');
     _quoteModelList = quoteModelFromJson(response.body.toString());
     print(_quoteModelList.length);
+    //await AppSharedPreferences.setQuoteModelList(_quoteModelList);
 
     // for (int i = 0; i < _quoteModelList.length; i++) {
     //   QuoteDB quoteDB = QuoteDB();
@@ -58,6 +64,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    _progressDialog = ProgressDialog(context, type: ProgressDialogType.Normal);
     return WillPopScope(
       onWillPop: () async {
         return false;
@@ -226,7 +233,15 @@ class _HomePageState extends State<HomePage> {
                             'SHARE',
                             style: TextStyle(color: Colors.white, fontSize: 25),
                           ),
-                          onPressed: () {}),
+                          onPressed: () async {
+                            await _progressDialog.show();
+                            sharedQuoteList.add(i.toString());
+                            await AppSharedPreferences.setSharedQuote(
+                                sharedQuoteList);
+                            await _progressDialog.hide();
+                            Navigator.of(context).push(
+                                _createRoute(QuoteTabs(), Offset(1, 0), 600));
+                          }),
                     ],
                   ),
                 );
@@ -285,6 +300,23 @@ class _HomePageState extends State<HomePage> {
               // print('go to page');
             }),
       ),
+    );
+  }
+
+  Route _createRoute(Widget _page, Offset _offset, int _duration) {
+    return PageRouteBuilder(
+      fullscreenDialog: true,
+      pageBuilder: (context, animation, secondaryAnimation) => _page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        var tween = Tween(begin: _offset, end: Offset.zero)
+            .chain(CurveTween(curve: Curves.ease));
+
+        return SlideTransition(
+          position: animation.drive(tween),
+          child: child,
+        );
+      },
+      transitionDuration: Duration(milliseconds: _duration),
     );
   }
 }

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:quoteApp/database/database_helper.dart';
 import 'package:quoteApp/model_classes/quote_model.dart';
 
 class RestDataSource{
