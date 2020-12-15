@@ -24,12 +24,10 @@ class _PieChartState extends State<PieChart> {
 
   Future<List<QuoteDatabaseModel>> fetchFromDatabase() async {
     final String iD = await AppSharedPreferences.getSavedID();
+    print(iD);
     print('gooooo');
     allData = await databaseHelper.getAllQuote();
     quoteDatabaseModelList = quoteDatabaseModelFromJson(allData[0].text);
-    //var dataJson = json.decode(stringText);
-    print('object 0');
-    //print(dataJson);
     print('object 1');
     print(quoteDatabaseModelList.length);
     print('object 2');

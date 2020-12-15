@@ -11,18 +11,6 @@ class QuotePieChart extends StatefulWidget {
 }
 
 class _QuotePieChartState extends State<QuotePieChart> {
-  // Map<String, double> dataMap = {
-  //   "Flutter": 5,
-  //   "React": 3,
-  //   "Xamarin": 2,
-  //   "Ionic": 2,
-  // };
-  // List<Color> colorList = [
-  //   Colors.red,
-  //   Colors.green,
-  //   Colors.blue,
-  //   Colors.yellow,
-  // ];
 
   @override
   Widget build(BuildContext context) {
