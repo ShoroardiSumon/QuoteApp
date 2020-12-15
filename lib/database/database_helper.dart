@@ -1,49 +1,34 @@
 import 'dart:io';
 import 'package:path/path.dart';
+import 'package:quoteApp/model_classes/quote_model.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 
-final String autoIncrementID = 'id';
+final String iD = 'id';
 
 // database table examiner
 final String tableQuote = 'quote';
-final String columnAuthor = 'author';
 final String columnText = 'text';
 
 class QuoteDB {
-  int id;
-  String author;
   String text;
 
   QuoteDB({
-    this.id,
-    this.author,
     this.text,
   });
 
   // convenience constructor to create a Word object
   QuoteDB.fromMap(Map<String, dynamic> map) {
-    id = map[autoIncrementID];
-    author = map[columnAuthor];
     text = map[columnText];
   }
 
   // convenience method to create a Map from this Word object
   Map<String, dynamic> toMap() {
-    var map = <String, dynamic>{
-      autoIncrementID: id,
-      columnAuthor: author,
-      columnText: text
-    };
-
-    if (autoIncrementID == null) {
-      map[autoIncrementID] = id;
-    }
+    var map = <String, dynamic>{columnText: text};
     return map;
   }
 
   Map<String, dynamic> toJson() => {
-        "author": author == null ? null : author,
         "text": text == null ? null : text,
       };
 }
@@ -77,22 +62,24 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async {
     await db.execute('''
           CREATE TABLE $tableQuote(
-        $autoIncrementID INTEGER PRIMARY KEY AUTOINCREMENT,
-        $columnAuthor TEXT NOT NULL,
+        $iD INTEGER PRIMARY KEY AUTOINCREMENT,
         $columnText TEXT NOT NULL
     )''');
   }
 
   Future<int> insertQuote(QuoteDB quoteDB) async {
     Database db = await database;
-    int id = await db.insert(tableQuote, quoteDB.toMap(),conflictAlgorithm: ConflictAlgorithm.replace);
+    int id = await db.insert(
+      tableQuote,
+      quoteDB.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     return id;
   }
 
   Future<List<QuoteDB>> getAllQuote() async {
     Database db = await database;
-    List<Map> maps = await db.query(tableQuote,
-        columns: [autoIncrementID, columnAuthor, columnText]);
+    List<Map> maps = await db.query(tableQuote, columns: [iD, columnText]);
 
     if (maps.length > 0) {
       List<QuoteDB> quote = [];
@@ -102,15 +89,11 @@ class DatabaseHelper {
     return null;
   }
 
-  Future<List<Map>> queryQuote(String id) async {
+  Future<String> queryQuote(String id) async {
     Database db = await database;
-
-    List<Map> maps = await db.query(tableQuote,
-        columns: [autoIncrementID], where: '$id = ?', whereArgs: [id]);
-
-    print('ans length ${maps.length}');
-
-    return maps;
+    var dataText = await db.query(tableQuote, where: 'id = ?', whereArgs: [id]);
+    print('QueryData= $dataText');
+    return dataText.toString();
   }
 
   deleteAll() async {

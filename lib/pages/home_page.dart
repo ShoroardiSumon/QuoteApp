@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:quoteApp/database/database_helper.dart';
 import 'package:quoteApp/model_classes/quote_model.dart';
@@ -6,7 +7,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:math';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:quoteApp/pages/shared_screen.dart';
+import 'package:quoteApp/pages/quote_pie_chart.dart';
 import 'package:quoteApp/pages/quote_tabs.dart';
+import 'package:quoteApp/pages/testt.dart';
 import 'package:quoteApp/utility/app_sharedpreference.dart';
 import 'package:progress_dialog/progress_dialog.dart';
 
@@ -17,37 +21,77 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   ProgressDialog _progressDialog;
-  List<String> sharedQuoteList =[];
+  List<String> sharedQuoteList = [];
   AppSharedPreferences appSharedPreferences;
-  QuoteDB quoteDB;
-  DatabaseHelper helper;
+  // DatabaseHelper helper;
   List<QuoteModel> _quoteModelList;
   List<QuoteModel> quoteModelFromJson(String str) => List<QuoteModel>.from(
       json.decode(str).map((x) => QuoteModel.fromJson(x)));
 
-  Future<String> fetchQuote() async {
-    final response = await http.get('https://type.fit/api/quotes');
-    _quoteModelList = quoteModelFromJson(response.body.toString());
-    print(_quoteModelList.length);
-    //await AppSharedPreferences.setQuoteModelList(_quoteModelList);
+  bool isSave = true;
 
-    // for (int i = 0; i < _quoteModelList.length; i++) {
-    //   QuoteDB quoteDB = QuoteDB();
-    //   print(_quoteModelList[i].author ?? 'Author');
-    //   quoteDB.author = _quoteModelList[i].author ?? 'No Author';
-    //   quoteDB.text = _quoteModelList[i].text ?? 'No Quote';
-    //   print(quoteDB);
-    //   DatabaseHelper helper = DatabaseHelper.instance;
-    //   int id = await helper.insertQuote(quoteDB);
-    //   print('DB ID = $id');
-    // }
-    return 'success';
+  final String quoteURL = 'https://type.fit/api/quotes';
+
+  Future<List<QuoteModel>> fetchQuote() async {
+    final response = await http.get(quoteURL);
+    print('my quote 55 ' + response.body);
+
+    if (isSave == true) {
+      setState(() {
+        isSave = false;
+      });
+      QuoteDB quoteDB = QuoteDB();
+      quoteDB.text = response.body.toString();
+      print('my quote ' + quoteDB.text);
+      DatabaseHelper helper = DatabaseHelper.instance;
+      int id = await helper.insertQuote(quoteDB);
+      await AppSharedPreferences.setSavedID(id.toString());
+      print('DB ID = $id');
+    }
+
+    _quoteModelList = quoteModelFromJson(response.body);
+    print(_quoteModelList.length);
+
+    return _quoteModelList;
+  }
+
+  var element = [];
+  countAuthor() async {
+    for (int j = 0; j < _quoteModelList.length; j++) {
+      setState(() {
+        element.add(_quoteModelList[j].author ?? 'No Author');
+      });
+    }
+    print(element);
+  }
+
+  Map<String, double> authorMap = {};
+  countSameAuthor() async {
+    element.forEach((element) {
+      if (!authorMap.containsKey(element)) {
+        setState(() {
+          authorMap[element] = 1;
+        });
+      } else {
+        setState(() {
+          authorMap[element] += 1;
+        });
+      }
+    });
+    print("Author map: $authorMap");
   }
 
   @override
   void initState() {
     super.initState();
     this.fetchQuote();
+
+    Timer.periodic(Duration(hours: 24), (timer) {
+      _randomQuote();
+      setState(() {
+        dateTime = null;
+      });
+    });
   }
 
   String dateTime;
@@ -55,7 +99,7 @@ class _HomePageState extends State<HomePage> {
   int i = 0;
   _randomQuote() {
     Random random = Random();
-    var ran = random.nextInt(_quoteModelList.length - 1) + 0;
+    var ran = random.nextInt(_quoteModelList.length) + 0;
     print("Random number: $ran");
     setState(() {
       i = ran;
@@ -70,7 +114,7 @@ class _HomePageState extends State<HomePage> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: Colors.grey[100],
+        backgroundColor: Colors.grey[200],
         appBar: AppBar(
           elevation: 0,
           title: Text("QuoteApp"),
@@ -97,12 +141,13 @@ class _HomePageState extends State<HomePage> {
                       Container(
                         padding: const EdgeInsets.all(8.0),
                         height: 50,
-                        width: MediaQuery.of(context).size.width / 2,
+                        width: double.infinity,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.indigo[50],
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(width: 2, color: Colors.indigo),
+                          border:
+                              Border.all(width: 2, color: Colors.indigo[100]),
                         ),
                         child: Text(
                           'QUOTE OF THE DAY',
@@ -220,7 +265,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       SizedBox(
-                        height: 50,
+                        height: 10,
                       ),
                       MaterialButton(
                           elevation: 0,
@@ -234,72 +279,144 @@ class _HomePageState extends State<HomePage> {
                             style: TextStyle(color: Colors.white, fontSize: 25),
                           ),
                           onPressed: () async {
+                            if (dateTime != null) {
+                              Navigator.of(context).push(_createRoute(
+                                  SharedScreen(
+                                    theQuote:
+                                        _quoteModelList[i].text ?? 'No Quote',
+                                    theAuthor:
+                                        _quoteModelList[i].author ?? 'Author',
+                                    datetime: dateTime ?? '',
+                                  ),
+                                  Offset(1, 0),
+                                  600));
+                            } else {
+                              _showDialog();
+                            }
+                          }),
+                      SizedBox(
+                        height: 30,
+                      ),
+                      // MaterialButton(
+                      //     elevation: 0,
+                      //     color: Colors.blue[800],
+                      //     height: 60,
+                      //     minWidth: 500,
+                      //     shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(12)),
+                      //     child: Text(
+                      //       'Test',
+                      //       style: TextStyle(color: Colors.white, fontSize: 25),
+                      //     ),
+                      //     onPressed: () async {
+                      //       Navigator.of(context).push(_createRoute(
+                      //           PieChart(
+                      //           ),
+                      //           Offset(1, 0),
+                      //           600));
+                      //     }),
+                      // SizedBox(
+                      //   height: 15,
+                      // ),
+                      MaterialButton(
+                          elevation: 0,
+                          color: Colors.blue[800],
+                          height: 60,
+                          minWidth: 500,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          child: Text(
+                            'Qoute Tabs',
+                            style: TextStyle(color: Colors.white, fontSize: 25),
+                          ),
+                          onPressed: () async {
                             await _progressDialog.show();
-                            sharedQuoteList.add(i.toString());
-                            await AppSharedPreferences.setSharedQuote(
-                                sharedQuoteList);
                             await _progressDialog.hide();
-                            Navigator.of(context).push(
-                                _createRoute(QuoteTabs(), Offset(1, 0), 600));
+                            Navigator.of(context).push(_createRoute(
+                                QuoteTabs(
+                                  quoteList: _quoteModelList,
+                                ),
+                                Offset(1, 0),
+                                600));
+                          }),
+                      SizedBox(
+                        height: 15,
+                      ),
+                      MaterialButton(
+                          elevation: 0,
+                          color: Colors.blue[800],
+                          height: 60,
+                          minWidth: 500,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          child: Text(
+                            'Pie Chart',
+                            style: TextStyle(color: Colors.white, fontSize: 25),
+                          ),
+                          onPressed: () async {
+                            await _progressDialog.show();
+                            await countAuthor();
+                            await countSameAuthor();
+                            await _progressDialog.hide();
+                            Navigator.of(context).push(_createRoute(
+                                QuotePieChart(
+                                  quoteList: _quoteModelList,
+                                  authormap: authorMap,
+                                ),
+                                Offset(1, 0),
+                                600));
                           }),
                     ],
                   ),
                 );
-              }
-              return Container(
-                height: 700,
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              } else
+                return Container(
+                  height: 700,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
             },
           ),
         ),
-        // body: Container(
-        //   child: FutureBuilder(
-        //     future: fetchQuote(),
-        //     builder: (BuildContext context, AsyncSnapshot snapshot) {
-        //       if (snapshot.hasData) {
-        //         return ListView.builder(
-        //           shrinkWrap: true,
-        //           itemCount: _quoteModelList.length,
-        //           itemBuilder: (BuildContext context, int index) {
-        //             return Card(
-        //               child: ListTile(
-        //                 title:
-        //                     Text(_quoteModelList[index].author ?? 'Author'),
-        //                 subtitle:
-        //                     Text(_quoteModelList[index].text ?? 'Quote'),
-        //               ),
-        //             );
-        //           },
-        //         );
-        //       }
-        //       return Center(
-        //         child: CircularProgressIndicator(),
-        //       );
-        //     },
-        //   ),
-        // ),
         floatingActionButton: FloatingActionButton(
             child: Icon(
               Icons.refresh,
               size: 40,
             ),
+            backgroundColor: Colors.indigo[900],
             elevation: 0,
             onPressed: () {
               _randomQuote();
               setState(() {
                 dateTime = null;
               });
-              // print('delete all data');
-              // DatabaseHelper helper = DatabaseHelper.instance;
-              //helper.deleteAll();
-              // Navigator.of(context)
-              //     .push(MaterialPageRoute(builder: (context) => TestDataBase()));
-              // print('go to page');
             }),
       ),
+    );
+  }
+
+  void _showDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoAlertDialog(
+          title: Text("Quote App"),
+          content: Text("Please select Date & Time before Share"),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: Text(
+                "OK",
+                style: TextStyle(color: Colors.indigo),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -12,14 +12,14 @@ class AppSharedPreferences {
     prefs.clear();
   }
 
-  static Future<List> getSharedQuote() async {
+  static Future<String> getSavedID() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('shared_quote');
+    return prefs.getString('saved_id');
   }
 
-  static Future<void> setSharedQuote(List sharedquotelist) async {
+  static Future<void> setSavedID(String savedID) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.setStringList('shared_quote', sharedquotelist);
+    return prefs.setString('saved_id', savedID);
   }
   //-----------------------------
   static Future<List> getQuoteModelList() async {

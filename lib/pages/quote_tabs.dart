@@ -1,50 +1,205 @@
 import 'package:flutter/material.dart';
 import 'package:quoteApp/model_classes/quote_model.dart';
-import 'package:quoteApp/utility/app_sharedpreference.dart';
 
 class QuoteTabs extends StatefulWidget {
+  final List<QuoteModel> quoteList;
+  QuoteTabs({@required this.quoteList});
   @override
   _QuoteTabsState createState() => _QuoteTabsState();
 }
 
 class _QuoteTabsState extends State<QuoteTabs> {
-
   @override
   void initState() {
     super.initState();
-    this.fetchSharedPreferenceValue();
   }
 
-  List<String> sharedPreferencesQuote;
-  List<QuoteModel> quoteModelList;
-  Future<Null> fetchSharedPreferenceValue()async{
-    sharedPreferencesQuote = await AppSharedPreferences.getSharedQuote();
-    //quoteModelList = await AppSharedPreferences.getQuoteModelList();
-  }
+  int initPosition = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("My Quote"),
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          child: TabBar(
-            isScrollable: true,
-            unselectedLabelColor: Colors.white.withOpacity(0.3),
-            indicatorColor: Colors.white,
-            tabs: <Widget>[
-            ]
-          ), 
-          preferredSize: Size.fromHeight(50.0),
+      body: SafeArea(
+        child: CustomTabView(
+          initPosition: initPosition,
+          itemCount: 100,
+          tabBuilder: (context, index) =>
+              Tab(text: widget.quoteList[index].author ?? 'Author'),
+          pageBuilder: (context, index) => Container(
+            height: double.infinity,
+            width: double.infinity,
+            color: Colors.indigo[50],
+            child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+              widget.quoteList[index].text ?? 'Quote',
+              style: TextStyle(color: Colors.indigo[900], fontSize: 30, fontWeight: FontWeight.bold),
+            ),
+                  ),
+                  ),
+                )),
+          ),
+          onPositionChange: (index) {
+            print('current position: $index');
+            initPosition = index;
+          },
+          onScroll: (position) => print('$position'),
         ),
       ),
-      body: TabBarView(
-        children: [
-
-        ]
-      ),
     );
+  }
+}
+
+class CustomTabView extends StatefulWidget {
+  final int itemCount;
+  final IndexedWidgetBuilder tabBuilder;
+  final IndexedWidgetBuilder pageBuilder;
+  final Widget stub;
+  final ValueChanged<int> onPositionChange;
+  final ValueChanged<double> onScroll;
+  final int initPosition;
+
+  CustomTabView({
+    @required this.itemCount,
+    @required this.tabBuilder,
+    @required this.pageBuilder,
+    this.stub,
+    this.onPositionChange,
+    this.onScroll,
+    this.initPosition,
+  });
+
+  @override
+  _CustomTabsState createState() => _CustomTabsState();
+}
+
+class _CustomTabsState extends State<CustomTabView>
+    with TickerProviderStateMixin {
+  TabController controller;
+  int _currentCount;
+  int _currentPosition;
+
+  @override
+  void initState() {
+    _currentPosition = widget.initPosition ?? 0;
+    controller = TabController(
+      length: widget.itemCount,
+      vsync: this,
+      initialIndex: _currentPosition,
+    );
+    controller.addListener(onPositionChange);
+    controller.animation.addListener(onScroll);
+    _currentCount = widget.itemCount;
+    super.initState();
+  }
+
+  @override
+  void didUpdateWidget(CustomTabView oldWidget) {
+    if (_currentCount != widget.itemCount) {
+      controller.animation.removeListener(onScroll);
+      controller.removeListener(onPositionChange);
+      controller.dispose();
+
+      if (widget.initPosition != null) {
+        _currentPosition = widget.initPosition;
+      }
+
+      if (_currentPosition > widget.itemCount - 1) {
+        _currentPosition = widget.itemCount - 1;
+        _currentPosition = _currentPosition < 0 ? 0 : _currentPosition;
+        if (widget.onPositionChange is ValueChanged<int>) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              widget.onPositionChange(_currentPosition);
+            }
+          });
+        }
+      }
+
+      _currentCount = widget.itemCount;
+      setState(() {
+        controller = TabController(
+          length: widget.itemCount,
+          vsync: this,
+          initialIndex: _currentPosition,
+        );
+        controller.addListener(onPositionChange);
+        controller.animation.addListener(onScroll);
+      });
+    } else if (widget.initPosition != null) {
+      controller.animateTo(widget.initPosition);
+    }
+
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  void dispose() {
+    controller.animation.removeListener(onScroll);
+    controller.removeListener(onPositionChange);
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.itemCount < 1) return widget.stub ?? Container();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Container(
+          alignment: Alignment.center,
+          child: TabBar(
+            isScrollable: true,
+            controller: controller,
+            labelColor: Theme.of(context).primaryColorDark,
+            unselectedLabelColor: Theme.of(context).hintColor,
+            indicator: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).primaryColorDark,
+                  width: 2,
+                ),
+              ),
+            ),
+            tabs: List.generate(
+              widget.itemCount,
+              (index) => widget.tabBuilder(context, index),
+            ),
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: controller,
+            children: List.generate(
+              widget.itemCount,
+              (index) => widget.pageBuilder(context, index),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  onPositionChange() {
+    if (!controller.indexIsChanging) {
+      _currentPosition = controller.index;
+      if (widget.onPositionChange is ValueChanged<int>) {
+        widget.onPositionChange(_currentPosition);
+      }
+    }
+  }
+
+  onScroll() {
+    if (widget.onScroll is ValueChanged<double>) {
+      widget.onScroll(controller.animation.value);
+    }
   }
 }
